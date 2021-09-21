@@ -1,5 +1,15 @@
 var h = 600;
-w = 400;
+var w = 400;
+flag = false;
+function devmode() {
+  flag = true;
+}
+fetch("http://localhost:5500/test/test.osu")
+  .then((response) => response.text())
+  .then((osufile) => {
+    parsed_file = BeatMapParser(osufile);
+    gameStart(parsed_file);
+  });
 const app = new PIXI.Application({ height: h, width: w });
 document.body.appendChild(app.view);
 var graphics = new PIXI.Graphics();
@@ -16,28 +26,51 @@ class tiles {
   constructor(pos) {
     this.pos = pos;
     this.fall = 0;
-    this.speed = 6;
+    this.speed = 10;
     this.current;
   }
   genrate() {
     this.tile = new PIXI.Graphics();
-    var intervalId = setInterval(() => {
-      this.tile.clear();
-      this.tile.beginFill(0xffffff);
-      this.tile.lineStyle(1, 0);
-      this.current = this.tile.drawRect(this.pos, this.fall, 100, 20);
-      this.fall += this.speed;
-      this.current.id = Math.floor(Math.random() * 1000);
-      app.stage.addChild(this.current);
+    app.ticker.add(() => {
+      if (this.fall < h - 10) {
+        this.tile.clear();
+        this.tile.beginFill(0xffffff);
+        this.tile.lineStyle(1, 0);
+        this.current = this.tile.drawRect(this.pos, this.fall, 100, 20);
+        this.fall += this.speed;
+        app.stage.addChild(this.current);
+      }
       if (this.fall == h) {
-        clearInterval(intervalId);
         this.pos = null;
         this.fall = null;
         console.log(app.stage.children);
         this.current.destroy();
       }
-    }, 0);
+    });
   }
+}
+function gameStart(osufile) {
+  timer = 0.0;
+  console.log(osufile);
+  tilecounter = 0;
+  app.ticker.add((delta) => {
+    timer += delta * 10;
+    console.log(timer, osufile[tilecounter].time);
+    if (
+      timer <= osufile[tilecounter].time + 15 &&
+      timer >= osufile[tilecounter].time - 15
+    ) {
+      while (osufile[tilecounter].time == osufile[tilecounter + 1].time) {
+        new tiles(osufile[tilecounter].lane).genrate();
+        tilecounter++;
+      }
+      new tiles(osufile[tilecounter].lane).genrate();
+      tilecounter++;
+    }
+    if (flag == true)
+      if (tilecounter < osufile.length)
+        if (timer > osufile[tilecounter].time + 25) tilecounter++;
+  });
 }
 //testing shit below
 // document.addEventListener("keypress", (key) => {
