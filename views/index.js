@@ -4,15 +4,18 @@ flag = false;
 function devmode() {
   flag = true;
 }
-fetch("http://localhost:5500/test/test.osu")
-  .then((response) => response.text())
-  .then((osufile) => {
-    parsed_file = BeatMapParser(osufile);
-    gameStart(parsed_file);
-  });
+function getshit() {
+  fetch("http://localhost:5500/test/test3.osu")
+    .then((response) => response.text())
+    .then((osufile) => {
+      parsed_file = BeatMapParser(osufile, 334);
+      gameStart(parsed_file);
+    });
+}
 const app = new PIXI.Application({ height: h, width: w });
 document.body.appendChild(app.view);
 var graphics = new PIXI.Graphics();
+var ticker = app.ticker.shared;
 
 graphics.beginFill(0xffffff);
 graphics.lineStyle(1, 0);
@@ -23,48 +26,67 @@ graphics.drawRect(200, h, 100, -20);
 graphics.drawRect(300, h, 100, -20);
 
 class tiles {
-  constructor(pos) {
+  constructor(pos, type, tileend) {
     this.pos = pos;
     this.fall = 0;
-    this.speed = 10;
+    this.speed = 30;
     this.current;
+    this.type = type;
+    this.tileend = tileend;
   }
   genrate() {
+    if (this.type == "slider");
     this.tile = new PIXI.Graphics();
     app.ticker.add(() => {
-      if (this.fall < h - 10) {
+      if (this.fall != null && this.fall < h + this.tileend) {
         this.tile.clear();
         this.tile.beginFill(0xffffff);
         this.tile.lineStyle(1, 0);
-        this.current = this.tile.drawRect(this.pos, this.fall, 100, 20);
+        this.current = this.tile.drawRect(
+          this.pos,
+          this.fall,
+          100,
+          -this.tileend
+        );
         this.fall += this.speed;
         app.stage.addChild(this.current);
-      }
-      if (this.fall == h) {
+      } else if (this.fall == h + this.tileend) {
         this.pos = null;
         this.fall = null;
-        console.log(app.stage.children);
         this.current.destroy();
       }
     });
   }
 }
 function gameStart(osufile) {
+  audio = new Audio("http://localhost:5500/test/audio.mp3");
+  audio.play();
   timer = 0.0;
   console.log(osufile);
   tilecounter = 0;
   app.ticker.add((delta) => {
-    timer += delta * 10;
-    console.log(timer, osufile[tilecounter].time);
+    timer += delta * 16.75;
+    console.log(timer);
+    // 333-334 ms time for tile to reach the end
     if (
       timer <= osufile[tilecounter].time + 15 &&
       timer >= osufile[tilecounter].time - 15
     ) {
       while (osufile[tilecounter].time == osufile[tilecounter + 1].time) {
-        new tiles(osufile[tilecounter].lane).genrate();
+        new tiles(
+          osufile[tilecounter].lane,
+          osufile[tilecounter].type,
+          // osufile[tilecounter].end - osufile[tilecounter].time ||
+          20
+        ).genrate();
         tilecounter++;
       }
-      new tiles(osufile[tilecounter].lane).genrate();
+      new tiles(
+        osufile[tilecounter].lane,
+        osufile[tilecounter].type,
+        // osufile[tilecounter].end ||
+        20
+      ).genrate();
       tilecounter++;
     }
     if (flag == true)
