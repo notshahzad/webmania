@@ -1,4 +1,4 @@
-BeatMapParser = (file, delay) => {
+BeatMapParser = (file) => {
   sliderinfo = [];
   bminfo = file
     .toString()

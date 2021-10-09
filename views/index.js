@@ -5,10 +5,11 @@ function devmode() {
   flag = true;
 }
 function getshit() {
-  fetch("http://localhost:5500/test/test3.osu")
+  fetch("http://localhost:5500/test/test.osu")
     .then((response) => response.text())
     .then((osufile) => {
-      parsed_file = BeatMapParser(osufile, 334);
+      parsed_file = BeatMapParser(osufile);
+      // console.log(parsed_file);
       gameStart(parsed_file);
     });
 }
@@ -35,8 +36,9 @@ class tiles {
     this.tileend = tileend;
   }
   genrate() {
-    if (this.type == "slider");
+    // 100ms == 330px
     this.tile = new PIXI.Graphics();
+    console.log(this.tileend);
     app.ticker.add(() => {
       if (this.fall != null && this.fall < h + this.tileend) {
         this.tile.clear();
@@ -62,32 +64,31 @@ function gameStart(osufile) {
   audio = new Audio("http://localhost:5500/test/audio.mp3");
   audio.play();
   timer = 0.0;
-  console.log(osufile);
   tilecounter = 0;
-  app.ticker.add((delta) => {
-    timer += delta * 16.75;
-    console.log(timer);
+  app.ticker.add(() => {
+    // timer += delta * 16.75;
+    // console.log(Math.round(timer), audio.currentTime);
+    timer = audio.currentTime * 1000;
+    // console.log(timer);
     // 333-334 ms time for tile to reach the end
     if (
-      timer <= osufile[tilecounter].time + 15 &&
-      timer >= osufile[tilecounter].time - 15
+      timer <= osufile[tilecounter].time + 334 + 15 &&
+      timer >= osufile[tilecounter].time - 334 - 15
     ) {
-      while (osufile[tilecounter].time == osufile[tilecounter + 1].time) {
-        new tiles(
-          osufile[tilecounter].lane,
-          osufile[tilecounter].type,
-          // osufile[tilecounter].end - osufile[tilecounter].time ||
-          20
-        ).genrate();
-        tilecounter++;
-      }
       new tiles(
         osufile[tilecounter].lane,
         osufile[tilecounter].type,
-        // osufile[tilecounter].end ||
-        20
+        osufile[tilecounter].end - osufile[tilecounter].time || 20
       ).genrate();
       tilecounter++;
+      while (osufile[tilecounter].time == osufile[tilecounter - 1].time) {
+        new tiles(
+          osufile[tilecounter].lane,
+          osufile[tilecounter].type,
+          osufile[tilecounter].end - osufile[tilecounter].time || 20
+        ).genrate();
+        tilecounter++;
+      }
     }
     if (flag == true)
       if (tilecounter < osufile.length)
