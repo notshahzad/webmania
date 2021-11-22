@@ -1,22 +1,28 @@
 var h = 600;
 var w = 400;
-flag = false;
+var timer,
+  mappedkey,
+  hitcounter = 0;
+var flag = false;
+var speed = 15;
+var score = document.getElementById("score");
 function devmode() {
   flag = true;
 }
 function getshit() {
-  fetch("http://localhost:5500/test/test.osu")
+  fetch("http://localhost:5500/test/test2.osu")
     .then((response) => response.text())
     .then((osufile) => {
       parsed_file = BeatMapParser(osufile);
-      // console.log(parsed_file);
       gameStart(parsed_file);
     });
 }
+
+var keys = {};
+var keymap = { 0: "a", 1: "s", 2: "k", 3: "l" };
 const app = new PIXI.Application({ height: h, width: w });
 document.body.appendChild(app.view);
 var graphics = new PIXI.Graphics();
-var ticker = app.ticker.shared;
 
 graphics.beginFill(0xffffff);
 graphics.lineStyle(1, 0);
@@ -26,51 +32,128 @@ graphics.drawRect(100, h, 100, -20);
 graphics.drawRect(200, h, 100, -20);
 graphics.drawRect(300, h, 100, -20);
 
+function keylistener() {
+  document.addEventListener("keydown", (key) => {
+    if (!keys[key.key]) {
+      keys[key.key] = timer;
+    }
+  });
+  document.addEventListener("keyup", (key) => {
+    delete keys[key.key];
+  });
+}
 class tiles {
-  constructor(pos, type, tileend) {
-    this.pos = pos;
-    this.fall = 0;
-    this.speed = 30;
-    this.current;
+  constructor(lane, type, tileend) {
+    this.lane = lane;
+    this.pos = 0;
     this.type = type;
     this.tileend = tileend;
   }
   genrate() {
     // 100ms == 330px
+    //working on this rn
     this.tile = new PIXI.Graphics();
-    console.log(this.tileend);
     app.ticker.add(() => {
-      if (this.fall != null && this.fall < h + this.tileend) {
+      if (this.pos != null && this.pos <= h + this.tileend + 100) {
         this.tile.clear();
         this.tile.beginFill(0xffffff);
         this.tile.lineStyle(1, 0);
-        this.current = this.tile.drawRect(
-          this.pos,
-          this.fall,
-          100,
-          -this.tileend
-        );
-        this.fall += this.speed;
-        app.stage.addChild(this.current);
-      } else if (this.fall == h + this.tileend) {
+        this.tile.drawRect(this.lane, this.pos, 100, -this.tileend);
+        this.pos += speed;
+        app.stage.addChild(this.tile);
+      } else if (this.pos >= h + this.tileend + 100) {
+        this.lane = null;
         this.pos = null;
-        this.fall = null;
-        this.current.destroy();
+        this.tilend = null;
+        // console.log("tile destroyed");
+        try {
+          this.tile.destroy();
+        } catch {
+          console.log(`tile not destroyed ${this.tile}`);
+        }
+      }
+      //change pls
+      if (this.pos <= h - 80 && this.pos >= h - 100) {
+        new CheckHit(this.lane, this).checkHit();
+      }
+      if (
+        this.type === "drag" &&
+        this.pos <= h + this.tileend - 80 &&
+        this.pos >= h + this.tileend - 100
+      ) {
+        if (
+          keys[keymap[this.lane / 100]] &&
+          timer - keys[keymap[this.lane / 100]] <= this.tileend + 100 &&
+          timer - keys[keymap[this.lane / 100]] >= this.tileend - 100
+        ) {
+          hitcounter++;
+          score.innerHTML = hitcounter;
+        }
       }
     });
   }
 }
+class CheckHit {
+  constructor(lane, self) {
+    this.lane = lane;
+    this.self = self;
+  }
+  checkHit() {
+    // console.log(`checking ${lane}`);
+    this.mappedkey = keymap[this.lane / 100];
+    (this.st = setInterval(() => {
+      if (this.self.pos == undefined) {
+        clearInterval(this.st),
+          (this.mappedkey = null),
+          (this.lane = null),
+          (this.st = null),
+          (this.self = null);
+      }
+      if (
+        keys[this.mappedkey] &&
+        keys[this.mappedkey] >= timer - 100 &&
+        keys[this.mappedkey] <= timer + 100
+      ) {
+        hitcounter++;
+        score.innerHTML = hitcounter;
+        clearInterval(this.st);
+        this.mappedkey = null;
+        this.lane = null;
+        this.st = null;
+        this.self = null;
+      }
+    })),
+      0;
+  }
+}
+function checkHit(lane) {
+  // console.log(`checking ${lane}`);
+  mappedkey = keymap[lane / 100];
+  (st = setInterval(() => {
+    if (
+      keys[mappedkey] &&
+      keys[mappedkey] >= timer - 100 &&
+      keys[mappedkey] <= timer + 100
+    ) {
+      hitcounter++;
+      clearInterval(st);
+      mappedkey = null;
+      console.log("cleared2");
+    }
+  })),
+    0;
+}
+function stop() {
+  audio.pause();
+}
 function gameStart(osufile) {
-  audio = new Audio("http://localhost:5500/test/audio.mp3");
+  audio = new Audio("http://localhost:5500/test/audio2.mp3");
   audio.play();
   timer = 0.0;
   tilecounter = 0;
   app.ticker.add(() => {
-    // timer += delta * 16.75;
-    // console.log(Math.round(timer), audio.currentTime);
     timer = audio.currentTime * 1000;
-    // console.log(timer);
-    // 333-334 ms time for tile to reach the end
+    keylistener();
     if (
       timer <= osufile[tilecounter].time + 334 + 15 &&
       timer >= osufile[tilecounter].time - 334 - 15
@@ -95,15 +178,4 @@ function gameStart(osufile) {
         if (timer > osufile[tilecounter].time + 25) tilecounter++;
   });
 }
-//testing shit below
-// document.addEventListener("keypress", (key) => {
-//   var map = [];
-//   map.push(key.key);
-//   for (let keys = 0; keys <= map.length; keys++) {
-//     if (map[keys] == "a") s = new tiles(0).genrate();
-//     if (map[keys] == "s") s = new tiles(100).genrate();
-//     if (map[keys] == "k") s = new tiles(200).genrate();
-//     if (map[keys] == "l") s = new tiles(300).genrate();
-//   }
-// });
 app.stage.addChild(graphics);
