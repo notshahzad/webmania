@@ -10,16 +10,18 @@ function devmode() {
   flag = true;
 }
 function getshit() {
-  fetch("http://localhost:5500/test/test2.osu")
+  fetch("http://localhost:5500/test/test.osu")
     .then((response) => response.text())
     .then((osufile) => {
       parsed_file = BeatMapParser(osufile);
+      console.log(parsed_file);
       gameStart(parsed_file);
     });
 }
 
 var keys = {};
 var keymap = { 0: "a", 1: "s", 2: "k", 3: "l" };
+var OnQueue = { 0: 0, 1: 0, 2: 0, 3: 0 };
 const app = new PIXI.Application({ height: h, width: w });
 document.body.appendChild(app.view);
 var graphics = new PIXI.Graphics();
@@ -48,10 +50,9 @@ class tiles {
     this.pos = 0;
     this.type = type;
     this.tileend = tileend;
+    this.hitcall = true;
   }
   genrate() {
-    // 100ms == 330px
-    //working on this rn
     this.tile = new PIXI.Graphics();
     app.ticker.add(() => {
       if (this.pos != null && this.pos <= h + this.tileend + 100) {
@@ -62,6 +63,7 @@ class tiles {
         this.pos += speed;
         app.stage.addChild(this.tile);
       } else if (this.pos >= h + this.tileend + 100) {
+        OnQueue[this.lane / 100] = 0;
         this.lane = null;
         this.pos = null;
         this.tilend = null;
@@ -73,8 +75,12 @@ class tiles {
         }
       }
       //change pls
-      if (this.pos <= h - 80 && this.pos >= h - 100) {
-        new CheckHit(this.lane, this).checkHit();
+      if (this.pos <= h + 80 && this.pos >= h - 100) {
+        if (OnQueue[this.lane / 100] == 0 && this.hitcall != null) {
+          new CheckHit(this.lane, this).checkHit();
+          OnQueue[this.lane / 100] = 1;
+          this.hitcall = null;
+        }
       }
       if (
         this.type === "drag" &&
@@ -87,6 +93,7 @@ class tiles {
           timer - keys[keymap[this.lane / 100]] >= this.tileend - 100
         ) {
           hitcounter++;
+          console.log("drag success");
           score.innerHTML = hitcounter;
         }
       }
@@ -104,6 +111,7 @@ class CheckHit {
     (this.st = setInterval(() => {
       if (this.self.pos == undefined) {
         clearInterval(this.st),
+          (OnQueue[this.lane / 100] = 0),
           (this.mappedkey = null),
           (this.lane = null),
           (this.st = null),
@@ -117,6 +125,7 @@ class CheckHit {
         hitcounter++;
         score.innerHTML = hitcounter;
         clearInterval(this.st);
+        OnQueue[this.lane / 100] = 0;
         this.mappedkey = null;
         this.lane = null;
         this.st = null;
@@ -126,56 +135,41 @@ class CheckHit {
       0;
   }
 }
-function checkHit(lane) {
-  // console.log(`checking ${lane}`);
-  mappedkey = keymap[lane / 100];
-  (st = setInterval(() => {
-    if (
-      keys[mappedkey] &&
-      keys[mappedkey] >= timer - 100 &&
-      keys[mappedkey] <= timer + 100
-    ) {
-      hitcounter++;
-      clearInterval(st);
-      mappedkey = null;
-      console.log("cleared2");
-    }
-  })),
-    0;
-}
 function stop() {
   audio.pause();
 }
 function gameStart(osufile) {
-  audio = new Audio("http://localhost:5500/test/audio2.mp3");
+  audio = new Audio("http://localhost:5500/test/audio.mp3");
   audio.play();
   timer = 0.0;
   tilecounter = 0;
   app.ticker.add(() => {
-    timer = audio.currentTime * 1000;
-    keylistener();
-    if (
-      timer <= osufile[tilecounter].time + 334 + 15 &&
-      timer >= osufile[tilecounter].time - 334 - 15
-    ) {
-      new tiles(
-        osufile[tilecounter].lane,
-        osufile[tilecounter].type,
-        osufile[tilecounter].end - osufile[tilecounter].time || 20
-      ).genrate();
-      tilecounter++;
-      while (osufile[tilecounter].time == osufile[tilecounter - 1].time) {
+    if (tilecounter < osufile.length) {
+      timer = audio.currentTime * 1000;
+      keylistener();
+      if (
+        timer <= osufile[tilecounter].time + 640 + 15 &&
+        timer >= osufile[tilecounter].time - 640 - 15
+      ) {
         new tiles(
           osufile[tilecounter].lane,
           osufile[tilecounter].type,
           osufile[tilecounter].end - osufile[tilecounter].time || 20
         ).genrate();
         tilecounter++;
+        while (osufile[tilecounter].time == osufile[tilecounter - 1].time) {
+          new tiles(
+            osufile[tilecounter].lane,
+            osufile[tilecounter].type,
+            osufile[tilecounter].end - osufile[tilecounter].time || 20
+          ).genrate();
+          tilecounter++;
+        }
       }
+      if (flag == true)
+        if (tilecounter < osufile.length)
+          if (timer > osufile[tilecounter].time + 25) tilecounter++;
     }
-    if (flag == true)
-      if (tilecounter < osufile.length)
-        if (timer > osufile[tilecounter].time + 25) tilecounter++;
   });
 }
 app.stage.addChild(graphics);
