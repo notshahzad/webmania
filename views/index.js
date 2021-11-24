@@ -1,22 +1,38 @@
 var h = 600;
 var w = 400;
+var flag = false;
+var speed = 15;
 var timer,
   mappedkey,
   hitcounter = 0;
-var flag = false;
-var speed = 15;
+const filereader = new FileReader();
+var beatmap, audio;
+function ReadFile() {
+  file = document.getElementById("osufile").files[0];
+  console.log(file);
+  unzip = new JSZip();
+  unzip.loadAsync(file).then((data) => {
+    data.forEach((element) => {
+      elementname = element.split(".");
+      if (elementname[elementname.length - 1] == "osu") {
+        data.files[element].async("string").then((unparsedbeatmap) => {
+          beatmap = BeatMapParser(unparsedbeatmap);
+        });
+      }
+      if (elementname[elementname.length - 1] == "mp3") {
+        data.files[element].async("Blob").then((audioblob) => {
+          audio = audioblob;
+        });
+      }
+    });
+  });
+}
 var score = document.getElementById("score");
 function devmode() {
   flag = true;
 }
-function getshit() {
-  fetch("http://localhost:5500/test/test.osu")
-    .then((response) => response.text())
-    .then((osufile) => {
-      parsed_file = BeatMapParser(osufile);
-      console.log(parsed_file);
-      gameStart(parsed_file);
-    });
+function checkshit() {
+  if (beatmap && audio) gameStart(beatmap, audio);
 }
 
 var keys = {};
@@ -138,37 +154,37 @@ class CheckHit {
 function stop() {
   audio.pause();
 }
-function gameStart(osufile) {
-  audio = new Audio("http://localhost:5500/test/audio.mp3");
+function gameStart(beatmap, audioblob) {
+  audio = new Audio(URL.createObjectURL(audioblob));
   audio.play();
   timer = 0.0;
   tilecounter = 0;
   app.ticker.add(() => {
-    if (tilecounter < osufile.length) {
+    if (tilecounter < beatmap.length) {
       timer = audio.currentTime * 1000;
       keylistener();
       if (
-        timer <= osufile[tilecounter].time + 640 + 15 &&
-        timer >= osufile[tilecounter].time - 640 - 15
+        timer <= beatmap[tilecounter].time + 640 + 15 &&
+        timer >= beatmap[tilecounter].time - 640 - 15
       ) {
         new tiles(
-          osufile[tilecounter].lane,
-          osufile[tilecounter].type,
-          osufile[tilecounter].end - osufile[tilecounter].time || 20
+          beatmap[tilecounter].lane,
+          beatmap[tilecounter].type,
+          beatmap[tilecounter].end - beatmap[tilecounter].time || 20
         ).genrate();
         tilecounter++;
-        while (osufile[tilecounter].time == osufile[tilecounter - 1].time) {
+        while (beatmap[tilecounter].time == beatmap[tilecounter - 1].time) {
           new tiles(
-            osufile[tilecounter].lane,
-            osufile[tilecounter].type,
-            osufile[tilecounter].end - osufile[tilecounter].time || 20
+            beatmap[tilecounter].lane,
+            beatmap[tilecounter].type,
+            beatmap[tilecounter].end - beatmap[tilecounter].time || 20
           ).genrate();
           tilecounter++;
         }
       }
       if (flag == true)
-        if (tilecounter < osufile.length)
-          if (timer > osufile[tilecounter].time + 25) tilecounter++;
+        if (tilecounter < beatmap.length)
+          if (timer > beatmap[tilecounter].time + 25) tilecounter++;
     }
   });
 }

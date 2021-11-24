@@ -7,11 +7,15 @@
     <title>Document</title>
   </head>
   <body></body>
+  <script src="./jszip.min.js"></script>
   <script src="./pixi.min.js"></script>
   <script src="./BeatMapParser.js"></script>
-  <script src="./index.js"></script>
   <p id="score"></p>
+  <p id="health"></p>
+  <script src="./index.js"></script>
   <button onclick="devmode()">Developer Mode</button>
-  <button onclick="getshit()">Start Gaem</button>
+  <button onclick="checkshit()">Start Gaem</button>
   <button onclick="stop()">stop</button>
+  <input type="file" name="OuSFILE" id="osufile" />
+  <button onclick="ReadFile()">open</button>
 </html>
