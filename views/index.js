@@ -5,10 +5,12 @@ var speed = 15;
 var timer,
   mappedkey,
   hitcounter = 0;
+var beatmaps = {};
 const filereader = new FileReader();
-var beatmap, audio;
+var audio;
 function ReadFile() {
   file = document.getElementById("osufile").files[0];
+  appendbeatmaps = document.getElementById("beatmaps");
   console.log(file);
   unzip = new JSZip();
   unzip.loadAsync(file).then((data) => {
@@ -17,6 +19,9 @@ function ReadFile() {
       if (elementname[elementname.length - 1] == "osu") {
         data.files[element].async("string").then((unparsedbeatmap) => {
           beatmap = BeatMapParser(unparsedbeatmap);
+          beatmaps[element] = beatmap;
+          appendbeatmaps.innerHTML += `<label for="${element}">${element}</label>
+          <input type="radio" name="BM" value ='${element}' id = '${element}' value='${element}' >`;
         });
       }
       if (elementname[elementname.length - 1] == "mp3") {
@@ -32,7 +37,8 @@ function devmode() {
   flag = true;
 }
 function checkshit() {
-  if (beatmap && audio) gameStart(beatmap, audio);
+  bm = document.querySelector('input[name="BM"]:checked').value;
+  if (bm && audio) gameStart(beatmaps[bm], audio);
 }
 
 var keys = {};
