@@ -1,19 +1,23 @@
 var h = 600;
 var w = 400;
 var flag = false;
-var speed = 15;
+var speed = 20;
 var timer,
   mappedkey,
-  hitcounter = 0;
+  hitcounter = 0,
+  health = 100;
+
 var beatmaps = {};
 const filereader = new FileReader();
 var audio;
+var healthbar = document.getElementById("health");
 function ReadFile() {
   file = document.getElementById("osufile").files[0];
   appendbeatmaps = document.getElementById("beatmaps");
   console.log(file);
   unzip = new JSZip();
   unzip.loadAsync(file).then((data) => {
+    console.log(data);
     data.forEach((element) => {
       elementname = element.split(".");
       if (elementname[elementname.length - 1] == "osu") {
@@ -115,6 +119,7 @@ class tiles {
           timer - keys[keymap[this.lane / 100]] >= this.tileend - 100
         ) {
           hitcounter++;
+          if (health < 100) health += 10;
           console.log("drag success");
           score.innerHTML = hitcounter;
         }
@@ -136,6 +141,7 @@ class CheckHit {
           (OnQueue[this.lane / 100] = 0),
           (this.mappedkey = null),
           (this.lane = null),
+          (health -= 20),
           (this.st = null),
           (this.self = null);
       }
@@ -147,6 +153,7 @@ class CheckHit {
         hitcounter++;
         score.innerHTML = hitcounter;
         clearInterval(this.st);
+        if (health < 100) health += 10;
         OnQueue[this.lane / 100] = 0;
         this.mappedkey = null;
         this.lane = null;
@@ -166,6 +173,13 @@ function gameStart(beatmap, audioblob) {
   timer = 0.0;
   tilecounter = 0;
   app.ticker.add(() => {
+    healthbar.innerHTML = health;
+    if (health <= 0) {
+      audio.pause();
+      window.document.body.innerText = "lol you ded";
+      app.ticker.stop();
+      console.log("you died");
+    }
     if (tilecounter < beatmap.length) {
       timer = audio.currentTime * 1000;
       keylistener();
